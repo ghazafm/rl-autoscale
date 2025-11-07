@@ -11,11 +11,9 @@ Usage:
     enable_metrics(app, port=8000)
 """
 
-from .fastapi_middleware import enable_metrics as enable_fastapi_metrics
-from .flask_middleware import enable_metrics as enable_flask_metrics
 from .metrics import RLMetrics, get_metrics_registry
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __all__ = [
     "RLMetrics",
     "enable_metrics",
@@ -23,6 +21,30 @@ __all__ = [
     "enable_fastapi_metrics",
     "get_metrics_registry",
 ]
+
+
+def enable_flask_metrics(app, port: int = 8000, **kwargs):
+    """
+    Enable metrics for Flask applications.
+
+    This function is lazily imported to avoid requiring Flask as a dependency
+    when it's not needed.
+    """
+    from .flask_middleware import enable_metrics as _enable_flask_metrics
+
+    return _enable_flask_metrics(app, port=port, **kwargs)
+
+
+def enable_fastapi_metrics(app, port: int = 8000, **kwargs):
+    """
+    Enable metrics for FastAPI applications.
+
+    This function is lazily imported to avoid requiring FastAPI as a dependency
+    when it's not needed.
+    """
+    from .fastapi_middleware import enable_metrics as _enable_fastapi_metrics
+
+    return _enable_fastapi_metrics(app, port=port, **kwargs)
 
 
 def enable_metrics(app, port: int = 8000, **kwargs):
