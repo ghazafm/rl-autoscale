@@ -21,13 +21,13 @@ jobs:
       run: uv python install 3.11
 
     - name: Install dependencies
-      run: uv pip install --system ruff
+      run: uv sync --only-dev
 
     - name: Run ruff check
-      run: ruff check .
+      run: uv run ruff check .
 
     - name: Check formatting with ruff
-      run: ruff format --check .
+      run: uv run ruff format --check .
 
   test:
     runs-on: ubuntu-latest
@@ -47,17 +47,18 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
 
     - name: Install dependencies
-      run: uv pip install --system -e ".[dev,flask,fastapi]"
+      run: uv sync --all-extras
 
     - name: Run tests
       run: uv run pytest --cov=rl_autoscale --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       if: matrix.python-version == '3.11'
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         fail_ci_if_error: false
+      continue-on-error: true
 
   build:
     runs-on: ubuntu-latest
@@ -73,16 +74,16 @@ jobs:
       run: uv python install 3.11
 
     - name: Install build dependencies
-      run: uv pip install --system build twine
+      run: uv sync --only-dev
 
     - name: Build package
       run: uv run python -m build
 
     - name: Check package
-      run: twine check dist/*
+      run: uv run twine check dist/*
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
