@@ -57,15 +57,19 @@ async def hello():
 ## Installation
 
 ```bash
-# For Flask apps
-pip install rl-autoscale[flask]
+# Using pip
+pip install rl-autoscale[flask]      # For Flask apps
+pip install rl-autoscale[fastapi]    # For FastAPI apps
 
-# For FastAPI apps
-pip install rl-autoscale[fastapi]
+# Using uv (recommended - 10x faster!)
+uv pip install rl-autoscale[flask]
+uv pip install rl-autoscale[fastapi]
 
-# Core only (manual instrumentation)
+# Core only
 pip install rl-autoscale
 ```
+
+> 💡 **Tip**: This project uses [uv](https://github.com/astral-sh/uv) for blazingly fast package management. See [UV_GUIDE.md](UV_GUIDE.md) for details.
 
 ## What Metrics Are Exposed?
 
@@ -305,17 +309,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 ```bash
 # Clone repository
 git clone https://github.com/ghazafm/rl-autoscale
+cd rl-autoscale
 
-# Install development dependencies
-pip install -e ".[dev]"
+# Setup with uv (recommended - one command!)
+uv sync --all-extras
+
+# Or traditional way with pip
+pip install -e ".[dev,flask,fastapi]"
 
 # Run tests
 pytest
 
-# Format code
-black .
+# Format and lint code (using ruff for both!)
+ruff format .
 ruff check .
 ```
+
+> 📖 **Quick Start**: See [QUICK_START.md](QUICK_START.md) for fastest setup!
+> 📖 **Developer Guide**: See [UV_GUIDE.md](UV_GUIDE.md) for using uv and ruff effectively.
 
 ## License
 

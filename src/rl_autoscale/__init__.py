@@ -16,7 +16,13 @@ from .flask_middleware import enable_metrics as enable_flask_metrics
 from .metrics import RLMetrics, get_metrics_registry
 
 __version__ = "1.0.0"
-__all__ = ["RLMetrics", "enable_flask_metrics", "get_metrics_registry"]
+__all__ = [
+    "RLMetrics",
+    "enable_metrics",
+    "enable_flask_metrics",
+    "enable_fastapi_metrics",
+    "get_metrics_registry",
+]
 
 
 def enable_metrics(app, port: int = 8000, **kwargs):

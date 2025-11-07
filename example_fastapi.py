@@ -6,7 +6,7 @@ Shows how to use rl_autoscaling_observability with FastAPI.
 
 from fastapi import FastAPI
 
-from rl_autoscaler_exporter import enable_metrics
+from rl_autoscale import enable_metrics
 
 # Create FastAPI app
 app = FastAPI(title="FastAPI with RL Metrics")

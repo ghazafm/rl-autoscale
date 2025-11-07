@@ -8,7 +8,7 @@ After: 2 lines with rl_autoscaling_observability
 
 from flask import Flask, jsonify
 
-from rl_autoscaler_exporter import enable_metrics
+from rl_autoscale import enable_metrics
 
 # Create Flask app
 app = Flask(__name__)

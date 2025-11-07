@@ -130,8 +130,6 @@ def enable_metrics(
         exclude_paths=exclude_paths,
     )
 
-    logger.info(
-        f"✅ RL metrics enabled for FastAPI app (port={port}, namespace='{namespace}')"
-    )
+    logger.info(f"✅ RL metrics enabled for FastAPI app (port={port}, namespace='{namespace}')")
 
     return metrics

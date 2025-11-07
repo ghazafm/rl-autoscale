@@ -33,12 +33,14 @@ flask = [
 fastapi = [
     "fastapi>=0.100.0",
     "starlette>=0.27.0",
+    "uvicorn>=0.38.0",
 ]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
+    "ruff>=0.8.0",  # Includes both linting and formatting
+    "build>=1.0.0",
+    "twine>=5.0.0",
 ]
 
 [project.urls]
@@ -49,7 +51,11 @@ Issues = "https://github.com/ghazafm/rl-autoscale/issues"
 Changelog = "https://github.com/ghazafm/rl-autoscale/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["rl_autoscale*"]
+
+[tool.setuptools.package-data]
+rl_autoscale = ["py.typed"]
 
 [tool.ruff]
 line-length = 100
@@ -58,3 +64,10 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501"]  # Line too long handled by formatter
+
+[tool.ruff.format]
+# Use ruff format instead of black
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
