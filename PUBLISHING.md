@@ -223,8 +223,12 @@ git push origin v1.0.1
 
 ### What Gets Published
 
+**Pull Requests to master:**
+- → Build and test only (no publishing)
+- → Validates code quality before merge
+
 **Every push to master:**
-- → Test PyPI (no approval needed)
+- → Test PyPI (automatic, no approval needed)
 
 **Tagged commits (v*):**
 - → Test PyPI (automatic)
