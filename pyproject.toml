@@ -9,7 +9,7 @@ description = "Production-ready metrics instrumentation for RL-based autoscaling
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    {name = "Fauzan Ghaza", email = "contact@fauzanghaza.com"}
+    {name = "Fauzan Ghaza Madani", email = "contact@fauzanghaza.com"}
 ]
 keywords = ["reinforcement-learning", "autoscaling", "kubernetes", "prometheus", "observability", "metrics", "rl", "dqn", "q-learning"]
 classifiers = [
