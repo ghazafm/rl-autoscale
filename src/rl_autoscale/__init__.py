@@ -13,7 +13,7 @@ Usage:
 
 from .metrics import RLMetrics, get_metrics_registry
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __all__ = [
     "RLMetrics",
     "enable_metrics",
