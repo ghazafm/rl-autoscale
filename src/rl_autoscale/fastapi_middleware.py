@@ -5,13 +5,12 @@ Provides automatic instrumentation for FastAPI applications.
 """
 
 import logging
-import time
 from typing import Callable, Optional
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .metrics import RLMetrics, get_metrics_registry, start_metrics_server
+from .metrics import RLMetrics, get_metrics_registry, get_precise_time, start_metrics_server
 
 logger = logging.getLogger(__name__)
 
@@ -46,44 +45,64 @@ class RLMetricsMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.exclude_paths:
             return await call_next(request)
 
-        # Record start time
-        start_time = time.time()
+        # Track in-progress request
+        self.metrics.inc_in_progress(request.method)
 
-        # Process request
-        response: Response = await call_next(request)
+        # Record start time using high-precision timer
+        start_time = get_precise_time()
 
-        # Calculate duration
-        duration = time.time() - start_time
-
-        # Get path (apply normalizer if provided)
-        path = request.url.path
-        if self.path_normalizer:
-            try:
-                path = self.path_normalizer(path)
-            except Exception as e:
-                logger.warning(f"Path normalizer failed for {path}: {e}")
-
-        # Record metrics
         try:
-            self.metrics.observe_request(
-                method=request.method,
-                path=path,
-                duration=duration,
-                status_code=response.status_code,
-            )
-        except Exception as e:
-            logger.error(f"Failed to record metrics: {e}")
+            # Process request
+            response: Response = await call_next(request)
 
-        return response
+            # Calculate duration
+            duration = get_precise_time() - start_time
+
+            # Get path (apply normalizer if provided)
+            path = request.url.path
+            if self.path_normalizer:
+                try:
+                    path = self.path_normalizer(path)
+                except Exception as e:
+                    logger.warning(f"Path normalizer failed for {path}: {e}")
+
+            # Get response size from Content-Length header if available
+            response_size = None
+            content_length = response.headers.get("content-length")
+            if content_length:
+                try:
+                    response_size = int(content_length)
+                except ValueError:
+                    pass
+
+            # Record metrics
+            try:
+                self.metrics.observe_request(
+                    method=request.method,
+                    path=path,
+                    duration=duration,
+                    status_code=response.status_code,
+                    response_size=response_size,
+                )
+            except Exception as e:
+                logger.error(f"Failed to record metrics: {e}")
+
+            return response
+        finally:
+            # Always decrement in-progress counter
+            self.metrics.dec_in_progress(request.method)
 
 
 def enable_metrics(
     app: FastAPI,
-    port: int = 8000,
-    namespace: str = "",
+    port: Optional[int] = None,
+    namespace: Optional[str] = None,
     histogram_buckets: Optional[list[float]] = None,
+    response_size_buckets: Optional[list[float]] = None,
     path_normalizer: Optional[Callable[[str], str]] = None,
     exclude_paths: Optional[list[str]] = None,
+    app_name: Optional[str] = None,
+    app_version: Optional[str] = None,
 ) -> RLMetrics:
     """
     Enable RL autoscaling metrics for a FastAPI application.
@@ -99,13 +118,22 @@ def enable_metrics(
         async def hello():
             return {"message": "Hello World"}
 
+    Environment variables:
+        RL_METRICS_PORT: Default port for metrics server
+        RL_METRICS_NAMESPACE: Default namespace prefix
+        RL_METRICS_APP_NAME: Application name for info metric
+        RL_METRICS_APP_VERSION: Application version for info metric
+
     Args:
         app: FastAPI application instance
-        port: Port for Prometheus metrics server
-        namespace: Metric name prefix
+        port: Port for Prometheus metrics server (env: RL_METRICS_PORT)
+        namespace: Metric name prefix (env: RL_METRICS_NAMESPACE)
         histogram_buckets: Custom latency buckets
+        response_size_buckets: Custom response size buckets
         path_normalizer: Function to normalize paths
         exclude_paths: Paths to exclude from metrics
+        app_name: Application name (env: RL_METRICS_APP_NAME)
+        app_version: Application version (env: RL_METRICS_APP_VERSION)
 
     Returns:
         RLMetrics instance
@@ -114,6 +142,9 @@ def enable_metrics(
     metrics = get_metrics_registry(
         namespace=namespace,
         histogram_buckets=histogram_buckets,
+        response_size_buckets=response_size_buckets,
+        app_name=app_name,
+        app_version=app_version,
     )
 
     # Start metrics server

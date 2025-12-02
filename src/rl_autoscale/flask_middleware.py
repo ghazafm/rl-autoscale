@@ -5,31 +5,35 @@ Provides automatic instrumentation for Flask applications with minimal configura
 """
 
 import logging
-import time
-from typing import Optional
+from typing import Callable, Optional
 
 from flask import Flask, request
 
-from .metrics import RLMetrics, get_metrics_registry, start_metrics_server
+from .metrics import RLMetrics, get_metrics_registry, get_precise_time, start_metrics_server
 
 logger = logging.getLogger(__name__)
 
 
 def enable_metrics(
     app: Flask,
-    port: int = 8000,
-    namespace: str = "",
+    port: Optional[int] = None,
+    namespace: Optional[str] = None,
     histogram_buckets: Optional[list[float]] = None,
-    path_normalizer: Optional[callable] = None,
+    response_size_buckets: Optional[list[float]] = None,
+    path_normalizer: Optional[Callable[[str], str]] = None,
     exclude_paths: Optional[list[str]] = None,
+    app_name: Optional[str] = None,
+    app_version: Optional[str] = None,
 ) -> RLMetrics:
     r"""
     Enable RL autoscaling metrics for a Flask application.
 
     This function instruments your Flask app with:
-    - Automatic request timing
+    - Automatic request timing (high-precision)
     - Response time histogram (for percentile calculation)
     - Request counter (for throughput analysis)
+    - In-progress requests gauge (for saturation detection)
+    - Response size histogram (for bandwidth analysis)
     - Prometheus metrics endpoint
 
     Usage:
@@ -43,13 +47,22 @@ def enable_metrics(
         def hello():
             return "Hello World"
 
+    Environment variables:
+        RL_METRICS_PORT: Default port for metrics server
+        RL_METRICS_NAMESPACE: Default namespace prefix
+        RL_METRICS_APP_NAME: Application name for info metric
+        RL_METRICS_APP_VERSION: Application version for info metric
+
     Args:
         app: Flask application instance
-        port: Port for Prometheus metrics server (default: 8000)
-        namespace: Metric name prefix (e.g., "myapp")
+        port: Port for Prometheus metrics server (env: RL_METRICS_PORT)
+        namespace: Metric name prefix (e.g., "myapp") (env: RL_METRICS_NAMESPACE)
         histogram_buckets: Custom latency buckets (default: 5ms to 10s)
+        response_size_buckets: Custom response size buckets (default: 100B to 10MB)
         path_normalizer: Function to normalize paths (e.g., /user/123 -> /user/:id)
         exclude_paths: Paths to exclude from metrics (e.g., ["/health", "/metrics"])
+        app_name: Application name (env: RL_METRICS_APP_NAME)
+        app_version: Application version (env: RL_METRICS_APP_VERSION)
 
     Returns:
         RLMetrics instance for manual instrumentation if needed
@@ -66,6 +79,9 @@ def enable_metrics(
     metrics = get_metrics_registry(
         namespace=namespace,
         histogram_buckets=histogram_buckets,
+        response_size_buckets=response_size_buckets,
+        app_name=app_name,
+        app_version=app_version,
     )
 
     # Default excluded paths
@@ -80,18 +96,26 @@ def enable_metrics(
 
     @app.before_request
     def before_request_handler():
-        """Record request start time."""
-        request._rl_metrics_start_time = time.time()
+        """Record request start time and increment in-progress counter."""
+        request._rl_metrics_start_time = get_precise_time()
+        # Track in-progress request
+        metrics.inc_in_progress(request.method)
 
     @app.after_request
     def after_request_handler(response):
         """Record request completion and emit metrics."""
+        # Always decrement in-progress counter
+        try:
+            metrics.dec_in_progress(request.method)
+        except Exception:
+            pass
+
         # Skip if no start time recorded
         if not hasattr(request, "_rl_metrics_start_time"):
             return response
 
-        # Calculate duration
-        duration = time.time() - request._rl_metrics_start_time
+        # Calculate duration using high-precision timer
+        duration = get_precise_time() - request._rl_metrics_start_time
 
         # Get request details
         method = request.method
@@ -109,6 +133,17 @@ def enable_metrics(
         if path in exclude_paths:
             return response
 
+        # Get response size from Content-Length header if available
+        response_size = None
+        content_length = response.headers.get("Content-Length")
+        if content_length:
+            try:
+                response_size = int(content_length)
+            except ValueError:
+                pass
+        elif response.data:
+            response_size = len(response.data)
+
         # Record metrics
         try:
             metrics.observe_request(
@@ -116,6 +151,7 @@ def enable_metrics(
                 path=path,
                 duration=duration,
                 status_code=status_code,
+                response_size=response_size,
             )
         except Exception as e:
             logger.error(f"Failed to record metrics for {method} {path}: {e}")
