@@ -11,11 +11,17 @@ Usage:
     enable_metrics(app, port=8000)
 """
 
+from importlib.metadata import version
 from typing import Optional
 
 from .metrics import RLMetrics, get_metrics_registry, get_precise_time
 
-__version__ = "1.0.4"
+# Dynamically get version from package metadata (synced with pyproject.toml)
+try:
+    __version__ = version("rl-autoscale")
+except Exception:
+    __version__ = "0.0.0"  # Fallback for development
+
 __all__ = [
     "RLMetrics",
     "enable_metrics",
